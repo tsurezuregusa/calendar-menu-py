@@ -12,7 +12,7 @@ Light mode color
 
 Color in calendar, if SwiftBar fixes ANSI white color bug
 
-![screenshot]()
+![screenshot](https://user-images.githubusercontent.com/589440/112706422-ed76e800-8e9b-11eb-9e7f-19b052114621.png)
 
 ## Key
 
@@ -26,9 +26,12 @@ __-d-__	Holiday (defined in script)
 
 ### Time, Sun & Moon
 
-City, UTC Offset
+City, UTC offset, daylight hh:mm, difference from yesterday mm:ss
 
-(orange/blue)	daylight hh:mm, difference from yesterday mm:ss, current date/time, azimuth of sun, altitude of sun (if day)
+*below sorted by time*
+
+(orange/blue)	current \*date\*/time, azimuth of sun, altitude of sun (if day)
+
 (gray)		azimuth of moon, altitude of moon (if visible), age of moon (d), percent of illumination
 
 sunrise		(dark blue) “blue hour” start, (yellow) “golden hour” start, (red) sunrise, azimuth, (yellow) “golden hour” end
