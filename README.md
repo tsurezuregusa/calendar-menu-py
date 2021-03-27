@@ -34,11 +34,11 @@ City, UTC offset, daylight hh:mm, difference from yesterday mm:ss
 
 (gray)		azimuth of moon, altitude of moon (if visible), age of moon (d), percent of illumination
 
-sunrise		(dark blue) “blue hour” start, (yellow) “golden hour” start, (red) sunrise, azimuth, (yellow) “golden hour” end
+sunrise		(dark blue) civil twilight [“blue hour”] start, (yellow) “golden hour” start, (red) sunrise, azimuth, (yellow) “golden hour” end
 
 noon		(red) time, azimuth
 
-sunset	(yellow) “golden hour” start, (red) sunrise, azimuth, (yellow) “golden hour” end, (dark blue) “blue hour” end
+sunset	(yellow) “golden hour” start, (red) sunrise, azimuth, (yellow) “golden hour” end, (dark blue) civil twilight [“blue hour”] end
 
 (blue)	moonrise date/time, azimuth
 
