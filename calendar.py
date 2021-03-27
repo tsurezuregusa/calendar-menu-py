@@ -231,7 +231,8 @@ for p in places:
 		color = "steelblue"
 	
 	noon = place.next_transit(sun, start=dymdt)
-	if (enow-eoffset)%(ephem.hour*24) > (noon-eoffset)%(ephem.hour*24):
+	
+	if ephem.Date(enow+eoffset).triple()[2]%1 > ephem.Date(noon+eoffset).triple()[2]%1:
 		noon = place.previous_transit(sun, start=dymdt)
 	
 	if moon.alt > 0:
@@ -333,15 +334,18 @@ for p in places:
 	# else:
 	# 	linespr = lines.values()
 	linespr = dict(sorted(lines.items(), key=lambda item: item[0])).values()
+	printday = True
 	
 	for i,l in enumerate(linespr):
 		if re.search("<(\d+)>",l):
-			if re.search("<(\d+)>",l).groups()[0] != str(day):
+			if re.search("<(\d+)>",l).groups()[0] != str(day) and printday:
 				print(l.replace('<','').replace('>','  '))
+				printday = False
 			else:
 				print(re.sub('<\d+>',spaces,l))
+				printday = True
 		else:
-			print(re.sub('<\d+>',spaces,l))
+			print(l)
 	
 	if p['home']:
 		s = ""
@@ -352,4 +356,4 @@ for p in places:
 
 print('---')
 print("UTC|font=Menlo color=gray")
-print((now-offset).strftime("%d %H:%M")+"|font=Menlo ansi=false color=gray")
+print((now-localoffset).strftime("%d %H:%M")+"|font=Menlo ansi=false color=gray")
