@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # <bitbar.title>Calendar & Time</bitbar.title>
-# <bitbar.version>0.1</bitbar.version>
+# <bitbar.version>0.2</bitbar.version>
 # <bitbar.author.github>tsurezuregusa</bitbar.author.github>
 # <bitbar.desc>Display calendar, world time and sun/moon information</bitbar.desc>
 # <bitbar.dependencies>python3; pip: ephem</bitbar.dependencies>
@@ -11,7 +11,6 @@
 # <swiftbar.hideLastUpdated>true</swiftbar.hideLastUpdated>
 # <swiftbar.hideDisablePlugin>true</swiftbar.hideDisablePlugin>
 # <swiftbar.hideSwiftBar>true</swiftbar.hideSwiftBar>
-
 # <swiftbar.schedule>* * * * *</swiftbar.schedule>
 
 import re
@@ -49,10 +48,13 @@ places = [
 	}
 ]
 
-now = datetime.datetime.now()
+now = datetime.datetime.now(tz.tzlocal())
 dymdt = (now-localoffset).strftime("%Y/%m/%d %H:%M:%S")
 dymdty = (now-localoffset-datetime.timedelta(days=1)).strftime("%Y/%m/%d %H:%M:%S")
 enow = ephem.Date(dymdt)
+
+def spaces(s):
+	return ' ' * len(s.group())
 
 def hm(f):
 	t = f * 24
@@ -136,6 +138,7 @@ def setgold1(x):
 for p in places:
 	zone = tz.gettz(p['tz'])
 	offset = zone.utcoffset(now)
+	eoffset = offset.seconds * ephem.second
 	if offset < datetime.timedelta(hours=0):
 		offtxt = "-" + str(datetime.timedelta(hours=0)-offset).split(":")[0]
 	else:
@@ -143,6 +146,7 @@ for p in places:
 	# eoff = int(str(offset).split(":")[0]) * ephem.hour + int(str(offset).split(":")[1]) * ephem.minute
 	local = offset - localoffset
 	hour = int((now+local).strftime("%H"))
+	day = int((now+local).strftime("%d"))
 	
 	midnight = (now - datetime.timedelta(hours=24) + offset).strftime("%Y/%m/%d 0:00")
 	if p['home']:
@@ -157,11 +161,12 @@ for p in places:
 	place.horizon = '0'
 	sun = ephem.Sun(place)
 	moon = ephem.Moon(place)
+	sunaltnow = sun.alt
 	
-	if sun.alt > 0:
-		sunnow = ('%s %4s %s' % ((now+local).strftime("%d %H:%M"),degstr(sun.az),degstr(sun.alt)))
+	if sunaltnow > 0:
+		sunnow = ('%s %4s %s' % ((now+local).strftime("*%d* %H:%M"),degstr(sun.az),degstr(sun.alt)))
 	else:
-		sunnow = (now+local).strftime("%d %H:%M") + "    "
+		sunnow = (now+local).strftime("*%d* %H:%M") + "    "
 	moonaltnow = float(moon.alt)
 	moonaznow = float(moon.az)
 	
@@ -225,18 +230,18 @@ for p in places:
 			yestsunset = place.previous_setting(sun, start=dymdt)
 		color = "steelblue"
 	
-	noon = place.previous_transit(sun, start=dymdt)
-	if enow - noon > ephem.hour * 24:
-		noon = place.next_transit(sun, start=dymdt)
+	noon = place.next_transit(sun, start=dymdt)
+	if (enow-eoffset)%(ephem.hour*24) > (noon-eoffset)%(ephem.hour*24):
+		noon = place.previous_transit(sun, start=dymdt)
 	
-	moonrise = place.previous_rising(moon, start=dymdt)
-	if enow - moonrise > ephem.hour * 24:
+	if moon.alt > 0:
+		moonrise = place.previous_rising(moon, start=dymdt)
+		moonset = place.next_setting(moon, start=dymdt)
+	else:
 		moonrise = place.next_rising(moon, start=dymdt)
-	moonset = place.previous_setting(moon, start=dymdt)
-	if moonrise - moonset > 0:
 		moonset = place.next_setting(moon, start=dymdt)
 	
-	sunrisetime = (ephem.to_timezone(sunrise,ephem.UTC)+offset).strftime("%H:%M")
+	sunrisetime = (ephem.to_timezone(sunrise,ephem.UTC)+offset).strftime("<%d>%H:%M")
 	place.date = sunrise
 	sun.compute(place)
 	sunriseaz = degstr(sun.az)
@@ -256,13 +261,13 @@ for p in places:
 	ephem.newton(setgold1,x,x+0.01)
 	sunsetgold1 = (ephem.to_timezone(place.date,ephem.UTC)+offset).strftime("%H:%M")
 	
-	noontime = (ephem.to_timezone(noon,ephem.UTC)+offset).strftime("%H:%M")
+	noontime = (ephem.to_timezone(noon,ephem.UTC)+offset).strftime("<%d>%H:%M")
 	place.date = noon
 	sun.compute(place)
 	noonaz = degstr(sun.az)
 	noonalt = degstr(sun.alt)
 	
-	sunsettime = (ephem.to_timezone(sunset,ephem.UTC)+offset).strftime("%H:%M")
+	sunsettime = (ephem.to_timezone(sunset,ephem.UTC)+offset).strftime("<%d>%H:%M")
 	place.date = sunset
 	sun.compute(place)
 	sunsetaz = degstr(sun.az)
@@ -273,47 +278,78 @@ for p in places:
 	todaystr = hm(today)
 	yestdiff = ms(today - yestday)
 	
-	if p['home']:
-		print("%s %s |color=darkgray" % (p['name'],offtxt))
-		print("%s %7s %s|font=Menlo color=%s" % (todaystr,yestdiff,sunnow,color))
-	else:
-		print("%s %s |color=%s" % (p['name'],offtxt,color))
-		print("%s |font=Menlo color=%s" % ((now+local).strftime("%d %H:%M"),color))
-		print("--%s %7s %s|font=Menlo color=%s" % (todaystr,yestdiff,sunnow,color))
-	
-	if moonaltnow > 0:
-		print('%s%27s %3s %5s %2s%%%s' % (menu,degstr(moonaznow),degstr(moonaltnow),round(moondays,1),int(round(illumination)),"|font=Menlo color=silver trim=false"))
-	else:
-		print('%s%37s %2s%%%s' % (menu,round(moondays,1),int(round(illumination)),"|font=Menlo color=silver trim=false"))
-	
-	if not p['home']:
-		print('-----')
-	
-	print('%s\033[31m\033[34m%s  \033[33m%s     \033[31m%s %4s  \033[33m%s| font=Menlo ansi=true' % (menu,sunriseblue,sunrisegold0,sunrisetime,sunriseaz,sunrisegold1))
-	print('%s\033[31m                 %s %4s|font=Menlo ansi=true' % (menu,noontime,noonalt))
-	print('%s\033[31m       \033[33m%s\033[37m     \033[31m%s %4s  \033[33m%s  \033[34m%s|font=Menlo ansi=true' % (menu,sunsetgold1,sunsettime,sunsetaz,sunsetgold0,sunsetblue))
-	
-	moonrisetime = (ephem.to_timezone(moonrise,ephem.UTC)+offset).strftime("%d %H:%M")
+	moonrisetime = (ephem.to_timezone(moonrise,ephem.UTC)+offset).strftime("<%d>%H:%M")
 	place.date = moonrise
 	moon.compute(place)
 	moonriseaz = degstr(moon.az)
-	moonsettime = (ephem.to_timezone(moonset,ephem.UTC)+offset).strftime("%d %H:%M")
+	moonsettime = (ephem.to_timezone(moonset,ephem.UTC)+offset).strftime("<%d>%H:%M")
 	place.date = moonset
 	moon.compute(place)
 	moonsetaz = degstr(moon.az)
 	
-	if not p['home']:
-		print('-----')
-	print('%s %21s %4s|font=Menlo color=steelblue trim=false' % (menu,moonrisetime,moonriseaz))
-	print('%s %21s %4s|font=Menlo color=steelblue trim=false' % (menu,moonsettime,moonsetaz))
+	if len(p['name']) < 2:
+		tabs = 4
+	elif len(p['name']) < 5:
+		tabs = 3
+	elif len(p['name']) < 8:
+		tabs = 2
+	elif len(p['name']) < 12:
+		tabs = 1
+	else:
+		tabs = 0
+		
+	tabpad = "\t"
+	for i in range(tabs):
+		tabpad += "\t"
+	lines = {}
+	
+	if p['home']:
+		# print("%s %s |ansi=false color=darkgray" % (p['name'],offtxt))
+		# print("%s %s |font=Menlo ansi=false color=%s" % (todaystr,yestdiff,color))
+		print("%s %s \t\t%s%s %s|font=Menlo ansi=false color=darkgray" % (p['name'],offtxt,tabpad,todaystr,yestdiff))
+		lines[enow] = "            {0}|font=Menlo ansi=false color={1} trim=false".format(sunnow,color)
+	else:
+		print("%s %s \t\t%s%s %s|font=Menlo ansi=false color=darkgray" % (p['name'],offtxt,tabpad,todaystr,yestdiff))
+		print("%s |font=Menlo ansi=false color=%s" % ((now+local).strftime("%d %H:%M"),color))
+		# print("--%s %s |font=Menlo ansi=false color=%s" % (todaystr,yestdiff,color))
+		lines[enow] = "--            {0}|font=Menlo ansi=false color={1} trim=false".format(sunnow,color)
+	
+	if moonaltnow > 0 and sunaltnow < 0:
+		lines[enow] = "{0}{1} {2:>4s} {3:>3s} {4:3.1f} {5:>2d}%|font=Menlo ansi=false color=silver trim=false".format(menu,lines[enow].split('|')[0].replace('--','').rstrip(),degstr(moonaznow),degstr(moonaltnow),round(moondays,1),int(round(illumination)))
+	elif moonaltnow > 0:
+		lines[enow] += "\n{0}{1:>26s} {2:>3s} {3:3.1f} {4:>2d}%|font=Menlo ansi=false color=silver trim=false".format(menu,degstr(moonaznow),degstr(moonaltnow),round(moondays,1),int(round(illumination)))
+	# else:
+	# 	lines[enow] += "\n{0}{1:36.1f} {2:>2d}%|font=Menlo ansi=false color=silver trim=false".format(menu,round(moondays,1),int(round(illumination)))
+	
+	lines[sunrise] = "{0}\033[34m{1} \033[33m{2} \033[31m{3:>10s} {4:>4s}  \033[33m{5}| font=Menlo ansi=true".format(menu,sunriseblue,sunrisegold0,sunrisetime,sunriseaz,sunrisegold1)
+	lines[noon] = "{0}\033[31m{1:>22s} {2:>4s} 180˚|font=Menlo ansi=true".format(menu,noontime,noonalt)
+	lines[sunset] = "{0}\033[33m{1:>11s} \033[31m{2:>10s}{3:>5s}  \033[33m{4:>4s} \033[34m{5:>2s} |font=Menlo ansi=true".format(menu,sunsetgold1,sunsettime,sunsetaz,sunsetgold0,sunsetblue)
+	
+	lines[moonrise] = "{0}{1:>22s} {2:>4s}|font=Menlo ansi=false color=steelblue trim=false".format(menu,moonrisetime,moonriseaz)
+	lines[moonset] = "{0}{1:>22s} {2:>4s}|font=Menlo ansi=false color=steelblue trim=false".format(menu,moonsettime,moonsetaz)
+	
+	# if p['home']:
+	# 	linespr = dict(sorted(lines.items(), key=lambda item: item[0])).values()
+	# else:
+	# 	linespr = lines.values()
+	linespr = dict(sorted(lines.items(), key=lambda item: item[0])).values()
+	
+	for i,l in enumerate(linespr):
+		if re.search("<(\d+)>",l):
+			if re.search("<(\d+)>",l).groups()[0] != str(day):
+				print(l.replace('<','').replace('>','  '))
+			else:
+				print(re.sub('<\d+>',spaces,l))
+		else:
+			print(re.sub('<\d+>',spaces,l))
 	
 	if p['home']:
 		s = ""
 		for ph in phasesort:
 			s += ph['p'] + " " + ph['d'].strftime("%-m/%-d") + "   "
-		print("%s|font=Menlo color=silver" % (s))
+		print("%s|font=Menlo ansi=false color=silver" % (s.rstrip()))
 		print('---')
 
 print('---')
-print("UTC|color=gray")
-print((now-offset).strftime("%d %H:%M")+"|font=Menlo color=gray")
+print("UTC|font=Menlo color=gray")
+print((now-offset).strftime("%d %H:%M")+"|font=Menlo ansi=false color=gray")
